@@ -1,0 +1,35 @@
+<!-- Launches: altitude_from_rgbd_node -->
+<launch>
+
+	<param name ="/use_sim_time" value="true"/>
+                                                                                                <!--Z, Y, X-->                                               
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_oak_frame" args="0 0 0.105 -1.5708 0 -1.5708 base_link oak-d_frame 100" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="realsense_pose_to_base_link" args="-0.03 0 0.04 -1.5708 0 0 camera_pose_frame base_link 100" /> -->
+    <node pkg="tf" type="static_transform_publisher" name="realsense_pose_to_base_link" args="0 0 0 0 0 0 camera_pose_frame base_link 100" />
+    <node pkg="tf" type="static_transform_publisher" name="odom_to_realsense_odom" args="0 0 0 0 0 0 odom camera_odom_frame 100" />
+
+	<group>
+		<!-- <arg name="bagfile" default=" $(find semantic_SLAM)/rosbags/rosbag_stereo1.bag"/> -->
+        <arg name="bagfile" default=" $(find semantic_SLAM)/rosbags/oak_stereo_1.bag"/>
+        <remap from="tf" to="tf_old" />
+        <!-- The tf(1) static_transform_publisher does not use /tf_static, but periodically publises to /tf -->
+        <node pkg="rosbag" type="play" name="rosbag" args="--clock $(arg bagfile) -r 1" />
+        <!-- Usually, there would be e.g. a rosbag play instead of the static tf publisher. -->
+    </group>
+
+	<node name="tf_remapper" pkg="tf" type="tf_remap">
+        <rosparam param="mappings">[{old: world, new: odom}]</rosparam>
+    </node>
+ 
+	<node name="semantic_graph_slam_node" pkg="semantic_SLAM" type="semantic_graph_SLAM_node" output="screen">
+		<rosparam file="$(find semantic_SLAM)/config/oak_detector.yaml" command="load"/>			
+	</node>
+	<!-- <node pkg="tf" type="static_transform_publisher" name="cam_center_to_optitrack" args="0 0 0 -1.57 3.14 0 /Robot_1/base_link /oak-d_frame 100" /> -->
+
+    <arg name="show_rviz" default="true"/> 
+    <group if="$(arg show_rviz)">
+        <arg name="rviz_file" default="$(find semantic_SLAM)/rviz/ss_video.rviz" />
+        <node pkg="rviz" type="rviz" name="$(anon rviz)" output="screen"
+            args="-d $(arg rviz_file)" />
+    </group>
+</launch>
